@@ -11,6 +11,8 @@ def main():
 	screen = pew.Pix()
 	# x coordinate of my cursor
 	cursor = 3
+	# color value of whose turn it is (1=green, 2=red)
+	turn = 1
 
 	# -- game loop ----
 
@@ -28,13 +30,16 @@ def main():
 			# move cursor right if possible
 			if cursor < 6:
 				cursor += 1
+		if k & (pew.K_DOWN | pew.K_O | pew.K_X):
+			# reverse the turn: 1 -> 2, 2 -> 1
+			turn = 3 - turn
 
 		# -- drawing ----
 
 		# clear previous cursor
 		screen.box(0, 0, 0, 7, 1)
 		# draw cursor
-		screen.pixel(cursor, 0, 1)
+		screen.pixel(cursor, 0, turn)
 		# done drawing into the framebuffer, send it to the display
 		pew.show(screen)
 		# wait until it's time for the next frame
