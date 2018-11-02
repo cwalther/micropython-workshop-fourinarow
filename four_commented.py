@@ -63,30 +63,37 @@ def main():
 		# -- input handling ----
 
 		k = pew.keys()
-		# check for bits in k using the bitwise AND operator - the result is zero or nonzero, which count as false or true
-		if k & pew.K_LEFT:
-			# move cursor left if possible
-			if cursor > 0:
-				cursor -= 1
-		if k & pew.K_RIGHT:
-			# move cursor right if possible
-			if cursor < 6:
-				cursor += 1
-		# drop only if the respective key was not pressed in the last iteration, otherwise we would repeatedly drop while the key is held down (edge detection)
-		if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X):
-			# determine the topmost occupied (or beyond-the-bottom) place in the column by iterating from the top
-			y = 0
-			while y < 6 and board.pixel(cursor, y) == 0:
-				y += 1
-			# now either y == 6 (all were free) or place y was occupied, in both cases y-1 is the desired free place
-			# unless the whole column was full (y == 0)
-			if y != 0:
-				# place the piece in the final position
-				board.pixel(cursor, y-1, turn)
-				# check for winning rows
-				won = check(board)
-				# reverse the turn: 1 -> 2, 2 -> 1
-				turn = 3 - turn
+		# key handling is different depending on whether the game is running or over
+		if not won:
+			# check for bits in k using the bitwise AND operator - the result is zero or nonzero, which count as false or true
+			if k & pew.K_LEFT:
+				# move cursor left if possible
+				if cursor > 0:
+					cursor -= 1
+			if k & pew.K_RIGHT:
+				# move cursor right if possible
+				if cursor < 6:
+					cursor += 1
+			# drop only if the respective key was not pressed in the last iteration, otherwise we would repeatedly drop while the key is held down (edge detection)
+			if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X):
+				# determine the topmost occupied (or beyond-the-bottom) place in the column by iterating from the top
+				y = 0
+				while y < 6 and board.pixel(cursor, y) == 0:
+					y += 1
+				# now either y == 6 (all were free) or place y was occupied, in both cases y-1 is the desired free place
+				# unless the whole column was full (y == 0)
+				if y != 0:
+					# place the piece in the final position
+					board.pixel(cursor, y-1, turn)
+					# check for winning rows
+					won = check(board)
+					# reverse the turn: 1 -> 2, 2 -> 1
+					turn = 3 - turn
+		else:
+			# when the game is over, exit on a key press
+			# the first time we're getting here, the key that dropped the final piece may still be pressed - do nothing until all keys have been up in the previous iteration
+			if prevk == 0 and k != 0:
+				return
 		# save the pressed keys for the next iteration to detect edges
 		prevk = k
 
@@ -94,8 +101,9 @@ def main():
 
 		# clear previous cursor
 		screen.box(0, 0, 0, 7, 1)
-		# draw cursor
-		screen.pixel(cursor, 0, turn)
+		if not won:
+			# draw cursor
+			screen.pixel(cursor, 0, turn)
 		# draw the board
 		screen.blit(board, 0, 2)
 		# mark a winning row in orange
