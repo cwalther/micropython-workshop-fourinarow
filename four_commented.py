@@ -13,6 +13,24 @@ def check(board):
 			if board.pixel(x, y) != 0 and all(board.pixel(x+i, y) == board.pixel(x, y) for i in range(1, 4)):
 				# using a list comprehension to generate the output
 				return [(x+i, y) for i in range(4)]
+	# vertical rows can start in the topmost 3 rows and all columns
+	for x in range(7):
+		for y in range(3):
+			# "if the start pixel is set and all three below it match it"
+			if board.pixel(x, y) != 0 and all(board.pixel(x, y+i) == board.pixel(x, y) for i in range(1, 4)):
+				return [(x, y+i) for i in range(4)]
+	# main diagonal rows can start in the top left 4-by-3 rectangle
+	for x in range(4):
+		for y in range(3):
+			# "if the start pixel is set and all three down and to the right match it"
+			if board.pixel(x, y) != 0 and all(board.pixel(x+i, y+i) == board.pixel(x, y) for i in range(1, 4)):
+				return [(x+i, y+i) for i in range(4)]
+	# secondary diagonal rows can start in the bottom left 4-by-3 rectangle
+	for x in range(4):
+		for y in range(3, 6):
+			# "if the start pixel is set and all three up and to the right match it"
+			if board.pixel(x, y) != 0 and all(board.pixel(x+i, y-i) == board.pixel(x, y) for i in range(1, 4)):
+				return [(x+i, y-i) for i in range(4)]
 	return False
 
 # The main function contains the whole game. Called at the bottom.

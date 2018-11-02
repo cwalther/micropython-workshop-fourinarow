@@ -5,6 +5,18 @@ def check(board):
 		for y in range(6):
 			if board.pixel(x, y) != 0 and all(board.pixel(x+i, y) == board.pixel(x, y) for i in range(1, 4)):
 				return [(x+i, y) for i in range(4)]
+	for x in range(7):
+		for y in range(3):
+			if board.pixel(x, y) != 0 and all(board.pixel(x, y+i) == board.pixel(x, y) for i in range(1, 4)):
+				return [(x, y+i) for i in range(4)]
+	for x in range(4):
+		for y in range(3):
+			if board.pixel(x, y) != 0 and all(board.pixel(x+i, y+i) == board.pixel(x, y) for i in range(1, 4)):
+				return [(x+i, y+i) for i in range(4)]
+	for x in range(4):
+		for y in range(3, 6):
+			if board.pixel(x, y) != 0 and all(board.pixel(x+i, y-i) == board.pixel(x, y) for i in range(1, 4)):
+				return [(x+i, y-i) for i in range(4)]
 	return False
 
 def main():
