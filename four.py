@@ -6,6 +6,7 @@ def main():
 
 	pew.init()
 	screen = pew.Pix()
+	board = pew.Pix(7, 6)
 	cursor = 3
 	turn = 1
 	prevk = 0b111111
@@ -24,13 +25,19 @@ def main():
 			if cursor < 6:
 				cursor += 1
 		if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X):
-			turn = 3 - turn
+			y = 0
+			while y < 6 and board.pixel(cursor, y) == 0:
+				y += 1
+			if y != 0:
+				board.pixel(cursor, y-1, turn)
+				turn = 3 - turn
 		prevk = k
 
 		# -- drawing ----
 
 		screen.box(0, 0, 0, 7, 1)
 		screen.pixel(cursor, 0, turn)
+		screen.blit(board, 0, 2)
 		pew.show(screen)
 		pew.tick(0.15)
 

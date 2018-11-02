@@ -9,6 +9,8 @@ def main():
 	pew.init()
 	# the framebuffer
 	screen = pew.Pix()
+	# the board
+	board = pew.Pix(7, 6)
 	# x coordinate of my cursor
 	cursor = 3
 	# color value of whose turn it is (1=green, 2=red)
@@ -36,8 +38,17 @@ def main():
 				cursor += 1
 		# drop only if the respective key was not pressed in the last iteration, otherwise we would repeatedly drop while the key is held down (edge detection)
 		if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X):
-			# reverse the turn: 1 -> 2, 2 -> 1
-			turn = 3 - turn
+			# determine the topmost occupied (or beyond-the-bottom) place in the column by iterating from the top
+			y = 0
+			while y < 6 and board.pixel(cursor, y) == 0:
+				y += 1
+			# now either y == 6 (all were free) or place y was occupied, in both cases y-1 is the desired free place
+			# unless the whole column was full (y == 0)
+			if y != 0:
+				# place the piece in the final position
+				board.pixel(cursor, y-1, turn)
+				# reverse the turn: 1 -> 2, 2 -> 1
+				turn = 3 - turn
 		# save the pressed keys for the next iteration to detect edges
 		prevk = k
 
@@ -47,6 +58,8 @@ def main():
 		screen.box(0, 0, 0, 7, 1)
 		# draw cursor
 		screen.pixel(cursor, 0, turn)
+		# draw the board
+		screen.blit(board, 0, 2)
 		# done drawing into the framebuffer, send it to the display
 		pew.show(screen)
 		# wait until it's time for the next frame
