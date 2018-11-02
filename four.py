@@ -8,6 +8,7 @@ def main():
 	screen = pew.Pix()
 	cursor = 3
 	turn = 1
+	prevk = 0b111111
 
 	# -- game loop ----
 
@@ -22,8 +23,9 @@ def main():
 		if k & pew.K_RIGHT:
 			if cursor < 6:
 				cursor += 1
-		if k & (pew.K_DOWN | pew.K_O | pew.K_X):
+		if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X):
 			turn = 3 - turn
+		prevk = k
 
 		# -- drawing ----
 

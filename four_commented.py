@@ -13,6 +13,10 @@ def main():
 	cursor = 3
 	# color value of whose turn it is (1=green, 2=red)
 	turn = 1
+	# keys pressed in the previous game loop iteration (pew.keys() value),
+	# initialized to "all keys pressed" in binary so that there cannot be a
+	# rising edge in the first iteration
+	prevk = 0b111111
 
 	# -- game loop ----
 
@@ -30,9 +34,12 @@ def main():
 			# move cursor right if possible
 			if cursor < 6:
 				cursor += 1
-		if k & (pew.K_DOWN | pew.K_O | pew.K_X):
+		# drop only if the respective key was not pressed in the last iteration, otherwise we would repeatedly drop while the key is held down (edge detection)
+		if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X):
 			# reverse the turn: 1 -> 2, 2 -> 1
 			turn = 3 - turn
+		# save the pressed keys for the next iteration to detect edges
+		prevk = k
 
 		# -- drawing ----
 
