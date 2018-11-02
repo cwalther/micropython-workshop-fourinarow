@@ -1,5 +1,12 @@
 import pew
 
+def check(board):
+	for x in range(4):
+		for y in range(6):
+			if board.pixel(x, y) != 0 and all(board.pixel(x+i, y) == board.pixel(x, y) for i in range(1, 4)):
+				return [(x+i, y) for i in range(4)]
+	return False
+
 def main():
 
 	# -- initialization ----
@@ -10,6 +17,7 @@ def main():
 	cursor = 3
 	turn = 1
 	prevk = 0b111111
+	won = False
 
 	# -- game loop ----
 
@@ -30,6 +38,7 @@ def main():
 				y += 1
 			if y != 0:
 				board.pixel(cursor, y-1, turn)
+				won = check(board)
 				turn = 3 - turn
 		prevk = k
 
@@ -38,6 +47,9 @@ def main():
 		screen.box(0, 0, 0, 7, 1)
 		screen.pixel(cursor, 0, turn)
 		screen.blit(board, 0, 2)
+		if won:
+			for x, y in won:
+				screen.pixel(x, y+2, 3)
 		pew.show(screen)
 		pew.tick(0.15)
 
