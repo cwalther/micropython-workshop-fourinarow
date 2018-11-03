@@ -36,6 +36,24 @@ def check(board):
 # The main function contains the whole game. Called at the bottom.
 def main():
 
+	# -- animations ----
+
+	# these functions need access to `screen`, which is a local variable of the main() function, so they must be defined locally as well (or, alternatively, they could take it passed as an argument)
+
+	# Generator function that takes the color and final position of a piece and
+	# animates it dropping from the top down to that position.
+	# Drawn over a board where the piece is already in the final position, so
+	# - the final pixel must be erased
+	# - the animation ends one before the final position
+	def drop(color, x, y):
+		# start at 1 (because the cursor was already at 0) and run up to and excluding y
+		for i in range(1, y):
+			# erase final position with black
+			screen.pixel(x, y, 0)
+			# draw at current position
+			screen.pixel(x, i, color)
+			yield
+
 	# -- initialization ----
 
 	pew.init()
@@ -55,6 +73,8 @@ def main():
 	# either False or the winning row, which counts as "true" becaues it is a
 	# non-empty sequence
 	won = False
+	# a list of generators that implement any currently running animations
+	animations = []
 
 	# -- game loop ----
 
@@ -85,6 +105,8 @@ def main():
 				if y != 0:
 					# place the piece in the final position
 					board.pixel(cursor, y-1, turn)
+					# start the drop animation - doesn't draw anything yet, just sets up the generator that will draw when poked
+					animations.append(drop(turn, cursor, y+1))
 					# check for winning rows
 					won = check(board)
 					# reverse the turn: 1 -> 2, 2 -> 1
@@ -99,13 +121,23 @@ def main():
 
 		# -- drawing ----
 
-		# clear previous cursor
-		screen.box(0, 0, 0, 7, 1)
+		# clear previous cursor and dropping piece
+		screen.box(0, 0, 0, 7, 2)
 		if not won:
 			# draw cursor
 			screen.pixel(cursor, 0, turn)
-		# draw the board
+		# draw the board (in unanimated state)
 		screen.blit(board, 0, 2)
+		# poke all active animations to draw one iteration each
+		# we'll be removing items from the list while iterating over it, so we need to do it backwards to avoid skipping items
+		# start at the last position (len-1), continue to 0 inclusively which is -1 exclusively, in steps of -1
+		for i in range(len(animations)-1, -1, -1):
+			try:
+				# next() pokes, it raises StopIteration when the generator is exhausted (animation is over)
+				next(animations[i])
+			except StopIteration:
+				# remove completed animations
+				del animations[i]
 		# mark a winning row in orange
 		if won:
 			for x, y in won:

@@ -21,6 +21,14 @@ def check(board):
 
 def main():
 
+	# -- animations ----
+
+	def drop(color, x, y):
+		for i in range(1, y):
+			screen.pixel(x, y, 0)
+			screen.pixel(x, i, color)
+			yield
+
 	# -- initialization ----
 
 	pew.init()
@@ -30,6 +38,7 @@ def main():
 	turn = 1
 	prevk = 0b111111
 	won = False
+	animations = []
 
 	# -- game loop ----
 
@@ -51,6 +60,7 @@ def main():
 					y += 1
 				if y != 0:
 					board.pixel(cursor, y-1, turn)
+					animations.append(drop(turn, cursor, y+1))
 					won = check(board)
 					turn = 3 - turn
 		else:
@@ -60,10 +70,15 @@ def main():
 
 		# -- drawing ----
 
-		screen.box(0, 0, 0, 7, 1)
+		screen.box(0, 0, 0, 7, 2)
 		if not won:
 			screen.pixel(cursor, 0, turn)
 		screen.blit(board, 0, 2)
+		for i in range(len(animations)-1, -1, -1):
+			try:
+				next(animations[i])
+			except StopIteration:
+				del animations[i]
 		if won:
 			for x, y in won:
 				screen.pixel(x, y+2, 3)
