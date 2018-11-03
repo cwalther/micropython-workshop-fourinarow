@@ -40,6 +40,20 @@ def main():
 
 	# these functions need access to `screen`, which is a local variable of the main() function, so they must be defined locally as well (or, alternatively, they could take it passed as an argument)
 
+	# Generator function that takes a winning row in the format returned by
+	# check() and makes it blink by alternatingly doing nothing (leaving the
+	# pixels in their original color) and overwriting them with black.
+	def blink(row):
+		# infinite loop, the blinking does not end by itself
+		while True:
+			# odd iterations: do nothing -> colored pixels
+			yield
+			# even iterations: black pixels
+			for x, y in row:
+				# x, y are in board coordinates, add 2 to convert to screen coordinates
+				screen.pixel(x, y+2, 0)
+			yield
+
 	# Generator function that takes the color and final position of a piece and
 	# animates it dropping from the top down to that position.
 	# Drawn over a board where the piece is already in the final position, so
@@ -109,6 +123,10 @@ def main():
 					animations.append(drop(turn, cursor, y+1))
 					# check for winning rows
 					won = check(board)
+					# won is either False or a non-empty sequence that counts as true
+					if won:
+						# start the blink animation
+						animations.append(blink(won))
 					# reverse the turn: 1 -> 2, 2 -> 1
 					turn = 3 - turn
 		else:
@@ -138,11 +156,6 @@ def main():
 			except StopIteration:
 				# remove completed animations
 				del animations[i]
-		# mark a winning row in orange
-		if won:
-			for x, y in won:
-				# x, y are in board coordinates, add 2 to convert to screen coordinates
-				screen.pixel(x, y+2, 3)
 		# done drawing into the framebuffer, send it to the display
 		pew.show(screen)
 		# wait until it's time for the next frame

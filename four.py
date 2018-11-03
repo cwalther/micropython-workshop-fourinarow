@@ -23,6 +23,13 @@ def main():
 
 	# -- animations ----
 
+	def blink(row):
+		while True:
+			yield
+			for x, y in row:
+				screen.pixel(x, y+2, 0)
+			yield
+
 	def drop(color, x, y):
 		for i in range(1, y):
 			screen.pixel(x, y, 0)
@@ -62,6 +69,8 @@ def main():
 					board.pixel(cursor, y-1, turn)
 					animations.append(drop(turn, cursor, y+1))
 					won = check(board)
+					if won:
+						animations.append(blink(won))
 					turn = 3 - turn
 		else:
 			if prevk == 0 and k != 0:
@@ -79,9 +88,6 @@ def main():
 				next(animations[i])
 			except StopIteration:
 				del animations[i]
-		if won:
-			for x, y in won:
-				screen.pixel(x, y+2, 3)
 		pew.show(screen)
 		pew.tick(0.15)
 
