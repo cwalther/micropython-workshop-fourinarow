@@ -44,6 +44,9 @@ def main():
 	# check() and makes it blink by alternatingly doing nothing (leaving the
 	# pixels in their original color) and overwriting them with black.
 	def blink(row):
+		# as long as a drop animation is still running, do nothing
+		while len(animations) > 1:
+			yield
 		# infinite loop, the blinking does not end by itself
 		while True:
 			# odd iterations: do nothing -> colored pixels
@@ -130,9 +133,10 @@ def main():
 					# reverse the turn: 1 -> 2, 2 -> 1
 					turn = 3 - turn
 		else:
-			# when the game is over, exit on a key press
-			# the first time we're getting here, the key that dropped the final piece may still be pressed - do nothing until all keys have been up in the previous iteration
-			if prevk == 0 and k != 0:
+			# when the game is over, exit on a key press - several conditions to check:
+			# - the first time we're getting here, the key that dropped the final piece may still be pressed - do nothing until all keys have been up in the previous iteration
+			# - do nothing until the drop animation has completed and only the blink animation (which is endless) remains
+			if prevk == 0 and k != 0 and len(animations) == 1:
 				return
 		# save the pressed keys for the next iteration to detect edges
 		prevk = k

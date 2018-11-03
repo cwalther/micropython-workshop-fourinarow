@@ -24,6 +24,8 @@ def main():
 	# -- animations ----
 
 	def blink(row):
+		while len(animations) > 1:
+			yield
 		while True:
 			yield
 			for x, y in row:
@@ -73,7 +75,7 @@ def main():
 						animations.append(blink(won))
 					turn = 3 - turn
 		else:
-			if prevk == 0 and k != 0:
+			if prevk == 0 and k != 0 and len(animations) == 1:
 				return
 		prevk = k
 
