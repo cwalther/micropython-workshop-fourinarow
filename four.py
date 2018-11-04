@@ -1,4 +1,5 @@
 import pew
+import umqtt.simple as mqtt
 
 def check(board):
 	for x in range(4):
@@ -49,48 +50,71 @@ def main():
 	won = False
 	animations = []
 
-	# -- game loop ----
+	with open('four-name', 'rb') as f:
+		myname = f.read()
+	lobbyprefix = b'fourinarow/lobby/'
+	lobbytopic = lobbyprefix + myname
+	client = mqtt.MQTTClient('', 'mqtt.kolleegium.ch')
+	client.set_last_will(lobbytopic, b'', True)
+	client.connect()
+	try:
 
-	while True:
+		# -- lobby ----
 
-		# -- input handling ----
+		client.publish(lobbytopic, b'1', True)
 
-		k = pew.keys()
-		if not won:
-			if k & pew.K_LEFT:
-				if cursor > 0:
-					cursor -= 1
-			if k & pew.K_RIGHT:
-				if cursor < 6:
-					cursor += 1
-			if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X):
-				y = 0
-				while y < 6 and board.pixel(cursor, y) == 0:
-					y += 1
-				if y != 0:
-					board.pixel(cursor, y-1, turn)
-					animations.append(drop(turn, cursor, y+1))
-					won = check(board)
-					if won:
-						animations.append(blink(won))
-					turn = 3 - turn
-		else:
-			if prevk == 0 and k != 0 and len(animations) == 1:
-				return
-		prevk = k
+		while pew.keys() != 0:
+			pew.tick(0.1)
+		while pew.keys() == 0:
+			pew.tick(0.1)
+		return
 
-		# -- drawing ----
+		# -- game loop ----
 
-		screen.box(0, 0, 0, 7, 2)
-		if not won:
-			screen.pixel(cursor, 0, turn)
-		screen.blit(board, 0, 2)
-		for i in range(len(animations)-1, -1, -1):
-			try:
-				next(animations[i])
-			except StopIteration:
-				del animations[i]
-		pew.show(screen)
-		pew.tick(0.15)
+		while True:
+
+			# -- input handling ----
+
+			k = pew.keys()
+			if not won:
+				if k & pew.K_LEFT:
+					if cursor > 0:
+						cursor -= 1
+				if k & pew.K_RIGHT:
+					if cursor < 6:
+						cursor += 1
+				if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X):
+					y = 0
+					while y < 6 and board.pixel(cursor, y) == 0:
+						y += 1
+					if y != 0:
+						board.pixel(cursor, y-1, turn)
+						animations.append(drop(turn, cursor, y+1))
+						won = check(board)
+						if won:
+							animations.append(blink(won))
+						turn = 3 - turn
+			else:
+				if prevk == 0 and k != 0 and len(animations) == 1:
+					return
+			prevk = k
+
+			# -- drawing ----
+
+			screen.box(0, 0, 0, 7, 2)
+			if not won:
+				screen.pixel(cursor, 0, turn)
+			screen.blit(board, 0, 2)
+			for i in range(len(animations)-1, -1, -1):
+				try:
+					next(animations[i])
+				except StopIteration:
+					del animations[i]
+			pew.show(screen)
+			pew.tick(0.15)
+
+	finally:
+		client.publish(lobbytopic, b'', True)
+		client.disconnect()
 
 main()

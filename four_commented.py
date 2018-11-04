@@ -1,5 +1,8 @@
 # plain import: import a whole module and make it available under its own name
 import pew
+# renaming import: import a module and make it available under a different name
+# like `import umqtt.simple; mqtt = umqtt.simple` but without clobbering the name `umqtt`
+import umqtt.simple as mqtt
 
 # Check the given 7-by-6 board for winning rows.
 # If one is found, return it as a list of four (x, y) tuples in board coordinates.
@@ -93,81 +96,115 @@ def main():
 	# a list of generators that implement any currently running animations
 	animations = []
 
-	# -- game loop ----
+	# read the player name from the configuration file
+	# open for reading ('r'), in binary mode ('b') because we want the name as bytes, not as a string
+	with open('four-name', 'rb') as f:
+		myname = f.read()
+	# various common parts of MQTT topics as bytes
+	lobbyprefix = b'fourinarow/lobby/'
+	lobbytopic = lobbyprefix + myname
+	# set up the MQTT client object
+	client = mqtt.MQTTClient('', 'mqtt.kolleegium.ch')
+	# last will is the "leaving the lobby" message
+	client.set_last_will(lobbytopic, b'', True)
+	client.connect()
+	# Whatever happens from now on, whether we exit by an error or by a
+	# deliberate return, we want to close the connection in the end. Use a
+	# try-finally statement for that.
+	try:
 
-	while True:
+		# -- lobby ----
 
-		# -- input handling ----
+		# I am present
+		client.publish(lobbytopic, b'1', True)
 
-		k = pew.keys()
-		# key handling is different depending on whether the game is running or over
-		if not won:
-			# check for bits in k using the bitwise AND operator - the result is zero or nonzero, which count as false or true
-			if k & pew.K_LEFT:
-				# move cursor left if possible
-				if cursor > 0:
-					cursor -= 1
-			if k & pew.K_RIGHT:
-				# move cursor right if possible
-				if cursor < 6:
-					cursor += 1
-			# drop only if the respective key was not pressed in the last iteration, otherwise we would repeatedly drop while the key is held down (edge detection)
-			if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X):
-				# determine the topmost occupied (or beyond-the-bottom) place in the column by iterating from the top
-				y = 0
-				while y < 6 and board.pixel(cursor, y) == 0:
-					y += 1
-				# now either y == 6 (all were free) or place y was occupied, in both cases y-1 is the desired free place
-				# unless the whole column was full (y == 0)
-				if y != 0:
-					# place the piece in the final position
-					board.pixel(cursor, y-1, turn)
-					# start the drop animation - doesn't draw anything yet, just sets up the generator that will draw when poked
-					animations.append(drop(turn, cursor, y+1))
-					# check for winning rows
-					won = check(board)
-					# won is either False or a non-empty sequence that counts as true
-					if won:
-						# start the blink animation
-						animations.append(blink(won))
-					# reverse the turn: 1 -> 2, 2 -> 1
-					turn = 3 - turn
-		else:
-			# when the game is over, exit on a key press - several conditions to check:
-			# - the first time we're getting here, the key that dropped the final piece may still be pressed - do nothing until all keys have been up in the previous iteration
-			# - do nothing until the drop animation has completed and only the blink animation (which is endless) remains
-			if prevk == 0 and k != 0 and len(animations) == 1:
-				return
-		# save the pressed keys for the next iteration to detect edges
-		prevk = k
+		# when being started from the menu, a key may still be pressed - wait until all are up first
+		while pew.keys() != 0:
+			pew.tick(0.1)
+		while pew.keys() == 0:
+			pew.tick(0.1)
+		return
 
-		# -- drawing ----
+		# -- game loop ----
 
-		# clear previous cursor and dropping piece
-		screen.box(0, 0, 0, 7, 2)
-		if not won:
-			# draw cursor
-			screen.pixel(cursor, 0, turn)
-		# draw the board (in unanimated state)
-		screen.blit(board, 0, 2)
-		# poke all active animations to draw one iteration each
-		# we'll be removing items from the list while iterating over it, so we need to do it backwards to avoid skipping items
-		# start at the last position (len-1), continue to 0 inclusively which is -1 exclusively, in steps of -1
-		for i in range(len(animations)-1, -1, -1):
-			try:
-				# next() pokes, it raises StopIteration when the generator is exhausted (animation is over)
-				next(animations[i])
-			except StopIteration:
-				# remove completed animations
-				del animations[i]
-		# done drawing into the framebuffer, send it to the display
-		pew.show(screen)
-		# wait until it's time for the next frame
-		# 0.15 seconds is an appropriate frame time for our animations and key repeating - increase it if you still find it hard to move the cursor by exactly one pixel
-		# drawing at a faster rate would require more complex key repeat handling
-		pew.tick(0.15)
+		while True:
 
-	# end of game loop
+			# -- input handling ----
+
+			k = pew.keys()
+			# key handling is different depending on whether the game is running or over
+			if not won:
+				# check for bits in k using the bitwise AND operator - the result is zero or nonzero, which count as false or true
+				if k & pew.K_LEFT:
+					# move cursor left if possible
+					if cursor > 0:
+						cursor -= 1
+				if k & pew.K_RIGHT:
+					# move cursor right if possible
+					if cursor < 6:
+						cursor += 1
+				# drop only if the respective key was not pressed in the last iteration, otherwise we would repeatedly drop while the key is held down (edge detection)
+				if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X):
+					# determine the topmost occupied (or beyond-the-bottom) place in the column by iterating from the top
+					y = 0
+					while y < 6 and board.pixel(cursor, y) == 0:
+						y += 1
+					# now either y == 6 (all were free) or place y was occupied, in both cases y-1 is the desired free place
+					# unless the whole column was full (y == 0)
+					if y != 0:
+						# place the piece in the final position
+						board.pixel(cursor, y-1, turn)
+						# start the drop animation - doesn't draw anything yet, just sets up the generator that will draw when poked
+						animations.append(drop(turn, cursor, y+1))
+						# check for winning rows
+						won = check(board)
+						# won is either False or a non-empty sequence that counts as true
+						if won:
+							# start the blink animation
+							animations.append(blink(won))
+						# reverse the turn: 1 -> 2, 2 -> 1
+						turn = 3 - turn
+			else:
+				# when the game is over, exit on a key press - several conditions to check:
+				# - the first time we're getting here, the key that dropped the final piece may still be pressed - do nothing until all keys have been up in the previous iteration
+				# - do nothing until the drop animation has completed and only the blink animation (which is endless) remains
+				if prevk == 0 and k != 0 and len(animations) == 1:
+					return
+			# save the pressed keys for the next iteration to detect edges
+			prevk = k
+
+			# -- drawing ----
+
+			# clear previous cursor and dropping piece
+			screen.box(0, 0, 0, 7, 2)
+			if not won:
+				# draw cursor
+				screen.pixel(cursor, 0, turn)
+			# draw the board (in unanimated state)
+			screen.blit(board, 0, 2)
+			# poke all active animations to draw one iteration each
+			# we'll be removing items from the list while iterating over it, so we need to do it backwards to avoid skipping items
+			# start at the last position (len-1), continue to 0 inclusively which is -1 exclusively, in steps of -1
+			for i in range(len(animations)-1, -1, -1):
+				try:
+					# next() pokes, it raises StopIteration when the generator is exhausted (animation is over)
+					next(animations[i])
+				except StopIteration:
+					# remove completed animations
+					del animations[i]
+			# done drawing into the framebuffer, send it to the display
+			pew.show(screen)
+			# wait until it's time for the next frame
+			# 0.15 seconds is an appropriate frame time for our animations and key repeating - increase it if you still find it hard to move the cursor by exactly one pixel
+			# drawing at a faster rate would require more complex key repeat handling
+			pew.tick(0.15)
+
+		# end of game loop
+
+	finally:
+		# however we exited from the try block, by an error or by a deliberate return, leave the lobby and close the connection
+		client.publish(lobbytopic, b'', True)
+		client.disconnect()
 
 # run the game when this file is imported
 main()
