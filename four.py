@@ -1,4 +1,5 @@
 import pew
+from main import menugen
 import umqtt.simple as mqtt
 
 def check(board):
@@ -63,24 +64,27 @@ def main():
 
 		client.publish(lobbytopic, b'1', True)
 		lobby = set()
+		lobbylist = ['>exit']
+		menu = menugen(screen, lobbylist)
 		def onMessageLobby(topic, message):
 			if topic.startswith(lobbyprefix):
 				username = topic[len(lobbyprefix):]
 				if message:
 					lobby.add(username)
+					screen.box(1, 0, 7, 8, 1)
 				else:
 					lobby.discard(username)
-				print('Lobby:', lobby)
+					screen.box(2, 0, 7, 8, 1)
+				lobbylist[:-1] = [str(n, 'ascii') for n in lobby if n != myname]
 		client.set_callback(onMessageLobby)
 		client.subscribe(lobbyprefix + b'+')
 
 		# -- lobby loop ----
 
-		while pew.keys() != 0:
-			pew.tick(0.1)
-		while pew.keys() == 0:
+		for selected in menu:
 			client.check_msg()
-			pew.tick(0.1)
+			pew.show(screen)
+			pew.tick(1/24)
 		return
 
 		# -- game loop ----

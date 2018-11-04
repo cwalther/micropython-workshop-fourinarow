@@ -1,5 +1,8 @@
 # plain import: import a whole module and make it available under its own name
 import pew
+# partial import: import a module and make only part of its contents available
+# like `import main; menugen = main.menugen` but without clobbering the name `main`
+from main import menugen
 # renaming import: import a module and make it available under a different name
 # like `import umqtt.simple; mqtt = umqtt.simple` but without clobbering the name `umqtt`
 import umqtt.simple as mqtt
@@ -119,6 +122,10 @@ def main():
 		client.publish(lobbytopic, b'1', True)
 		# all the player names in the lobby, as a set so we can easily add and remove them by value without getting duplicates
 		lobby = set()
+		# the lobby as a list for the menu, which can't directly take a set, and with the additional "exit" entry at the end
+		lobbylist = ['>exit']
+		# create the menu generator, it keeps a reference to the list and will automatically pick up changes to it
+		menu = menugen(screen, lobbylist)
 		# callback for handling incoming MQTT messages while we're in the lobby
 		def onMessageLobby(topic, message):
 			# messages about players arriving and leaving
@@ -127,23 +134,34 @@ def main():
 				# message is b'', which counts as false, or non-empty (expected b'1'), which counts as true
 				if message:
 					lobby.add(username)
+					# flash a green bar at the bottom to indicate arrival
+					# this works because onMessageLobby is called from client.check_msg(), which occurs after drawing the menu (in `for selected in menu`) but before `pew.show(screen)`
+					screen.box(1, 0, 7, 8, 1)
 				else:
 					# use discard(), not remove() to avoid an exception if the name is not there
 					# (it should, but we have no control over what messages others send us)
 					lobby.discard(username)
-				print('Lobby:', lobby)
+					# red bar at the bottom to indicate departure
+					screen.box(2, 0, 7, 8, 1)
+				# update the list form of the lobby by
+				# - transforming the elements of the set form using a list comprehension (they are bytes but the menu wants strings)
+				# - inserting them using a slice index that replaces everything but the ">exit" item at the end
+				# it's important that we modify this list in place, not create a totally new list, because this list is the one the menu generator has a reference to
+				lobbylist[:-1] = [str(n, 'ascii') for n in lobby if n != myname]
 		client.set_callback(onMessageLobby)
 		# subscribe to all topics 1 level deep in the lobby (= user names)
 		client.subscribe(lobbyprefix + b'+')
 
 		# -- lobby loop ----
 
-		# when being started from the menu, a key may still be pressed - wait until all are up first
-		while pew.keys() != 0:
-			pew.tick(0.1)
-		while pew.keys() == 0:
+		# repeatedly poke the menu generator, which draws the menu and handles buttons, until the user selects an entry - conveniently done by a for loop
+		# assigns the returned index to `selected` every time - we don't need it during the loop, we only need the value from the last iteration afterwards
+		for selected in menu:
+			# while in the menu, we also repeatedly need to check for incoming MQTT messages - this calls onMessageLobby if there is any
 			client.check_msg()
-			pew.tick(0.1)
+			pew.show(screen)
+			# this is the frame rate expected by the menu for an appropriate animation speed
+			pew.tick(1/24)
 		return
 
 		# -- game loop ----
