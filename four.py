@@ -59,13 +59,27 @@ def main():
 	client.connect()
 	try:
 
-		# -- lobby ----
+		# -- lobby initialization ----
 
 		client.publish(lobbytopic, b'1', True)
+		lobby = set()
+		def onMessageLobby(topic, message):
+			if topic.startswith(lobbyprefix):
+				username = topic[len(lobbyprefix):]
+				if message:
+					lobby.add(username)
+				else:
+					lobby.discard(username)
+				print('Lobby:', lobby)
+		client.set_callback(onMessageLobby)
+		client.subscribe(lobbyprefix + b'+')
+
+		# -- lobby loop ----
 
 		while pew.keys() != 0:
 			pew.tick(0.1)
 		while pew.keys() == 0:
+			client.check_msg()
 			pew.tick(0.1)
 		return
 

@@ -113,15 +113,36 @@ def main():
 	# try-finally statement for that.
 	try:
 
-		# -- lobby ----
+		# -- lobby initialization ----
 
 		# I am present
 		client.publish(lobbytopic, b'1', True)
+		# all the player names in the lobby, as a set so we can easily add and remove them by value without getting duplicates
+		lobby = set()
+		# callback for handling incoming MQTT messages while we're in the lobby
+		def onMessageLobby(topic, message):
+			# messages about players arriving and leaving
+			if topic.startswith(lobbyprefix):
+				username = topic[len(lobbyprefix):]
+				# message is b'', which counts as false, or non-empty (expected b'1'), which counts as true
+				if message:
+					lobby.add(username)
+				else:
+					# use discard(), not remove() to avoid an exception if the name is not there
+					# (it should, but we have no control over what messages others send us)
+					lobby.discard(username)
+				print('Lobby:', lobby)
+		client.set_callback(onMessageLobby)
+		# subscribe to all topics 1 level deep in the lobby (= user names)
+		client.subscribe(lobbyprefix + b'+')
+
+		# -- lobby loop ----
 
 		# when being started from the menu, a key may still be pressed - wait until all are up first
 		while pew.keys() != 0:
 			pew.tick(0.1)
 		while pew.keys() == 0:
+			client.check_msg()
 			pew.tick(0.1)
 		return
 
