@@ -106,6 +106,8 @@ def main():
 	# various common parts of MQTT topics as bytes
 	lobbyprefix = b'fourinarow/lobby/'
 	lobbytopic = lobbyprefix + myname
+	joinprefix = b'fourinarow/join/'
+	jointopic = joinprefix + myname
 	# set up the MQTT client object
 	client = mqtt.MQTTClient('', 'mqtt.kolleegium.ch')
 	# last will is the "leaving the lobby" message
@@ -120,6 +122,8 @@ def main():
 
 		# I am present
 		client.publish(lobbytopic, b'1', True)
+		# the name of the player who joined us or whom we joined, currently nobody
+		joined = None
 		# all the player names in the lobby, as a set so we can easily add and remove them by value without getting duplicates
 		lobby = set()
 		# the lobby as a list for the menu, which can't directly take a set, and with the additional "exit" entry at the end
@@ -128,6 +132,9 @@ def main():
 		menu = menugen(screen, lobbylist)
 		# callback for handling incoming MQTT messages while we're in the lobby
 		def onMessageLobby(topic, message):
+			# declare variables from the outer context that we want to assign to, otherwise assignment would create them as local variables of this function
+			# access to other outer variables such as lobby or screen is read-only and needs no declaration
+			nonlocal joined, mycolor
 			# messages about players arriving and leaving
 			if topic.startswith(lobbyprefix):
 				username = topic[len(lobbyprefix):]
@@ -148,21 +155,53 @@ def main():
 				# - inserting them using a slice index that replaces everything but the ">exit" item at the end
 				# it's important that we modify this list in place, not create a totally new list, because this list is the one the menu generator has a reference to
 				lobbylist[:-1] = [str(n, 'ascii') for n in lobby if n != myname]
+			# messages about someone joining us
+			elif topic == jointopic:
+				# message content is the name of the other player
+				joined = message
+				# the joined player (us) gets red
+				mycolor = 2
 		client.set_callback(onMessageLobby)
 		# subscribe to all topics 1 level deep in the lobby (= user names)
 		client.subscribe(lobbyprefix + b'+')
+		client.subscribe(jointopic)
 
 		# -- lobby loop ----
 
 		# repeatedly poke the menu generator, which draws the menu and handles buttons, until the user selects an entry - conveniently done by a for loop
 		# assigns the returned index to `selected` every time - we don't need it during the loop, we only need the value from the last iteration afterwards
 		for selected in menu:
-			# while in the menu, we also repeatedly need to check for incoming MQTT messages - this calls onMessageLobby if there is any
+			# while in the menu, we also repeatedly need to check for incoming MQTT messages - this calls onMessageLobby if there is any, which may set joined
 			client.check_msg()
+			if joined:
+				# leave the for loop
+				break
 			pew.show(screen)
 			# this is the frame rate expected by the menu for an appropriate animation speed
 			pew.tick(1/24)
-		return
+		# we can leave the loop above in two ways:
+		# 1. when the menu generator ends, which is when the local user has selected an emtry from the menu
+		# 2. by the `break` statement when someone else has sent us a join message
+		# the `else` block of a `for` statement is executed in case 1 but not in case 2
+		else:
+			# if selected == len(lobbylist) - 1, the user selected ">exit", otherwise another player
+			if selected < len(lobbylist) - 1:
+				# selected someone to join, look up who by their index, convert from string to bytes, and send them a join message
+				joined = bytes(lobbylist[selected], 'ascii')
+				client.publish(joinprefix + joined, myname)
+				# the joining player gets green
+				mycolor = 1
+		# in any case (whether we joined someone, were joined, or are exiting), we now leave the lobby
+		client.publish(lobbytopic, b'', True)
+		# clear the menu from the screen
+		screen.box(0)
+		pew.show(screen)
+
+		# if the user chose ">exit", we're done, return from the main() function
+		if not joined:
+			# (the `finally` block at the end will still be executed because we're jumping out from inside the `try` block)
+			return
+		print('joined', joined, 'as color', mycolor)
 
 		# -- game loop ----
 
