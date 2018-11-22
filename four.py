@@ -46,6 +46,7 @@ def main():
 	screen = pew.Pix()
 	board = pew.Pix(7, 6)
 	cursor = 3
+	opcursor = 3
 	turn = 1
 	prevk = 0b111111
 	won = False
@@ -110,7 +111,14 @@ def main():
 		# -- game initialization ----
 
 		mycursortopic = b'fourinarow/game/' + myname + b'/cursor'
+		opcursortopic = b'fourinarow/game/' + joined + b'/cursor'
 
+		def onMessageGame(topic, message):
+			nonlocal opcursor
+			if topic == opcursortopic and len(message) == 1:
+				opcursor = message[0]
+		client.set_callback(onMessageGame)
+		client.subscribe(opcursortopic)
 		client.publish(mycursortopic, bytes((cursor,)), True)
 
 		# -- game loop ----
@@ -145,11 +153,14 @@ def main():
 					return
 			prevk = k
 
+			client.check_msg()
+
 			# -- drawing ----
 
 			screen.box(0, 0, 0, 7, 2)
 			if not won:
-				screen.pixel(cursor, 0, turn)
+				screen.pixel(cursor, 0, mycolor)
+				screen.pixel(opcursor, 0, 3 if cursor == opcursor else 3-mycolor)
 			screen.blit(board, 0, 2)
 			for i in range(len(animations)-1, -1, -1):
 				try:

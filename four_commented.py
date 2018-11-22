@@ -86,6 +86,8 @@ def main():
 	board = pew.Pix(7, 6)
 	# x coordinate of my cursor
 	cursor = 3
+	# x coordinate of opponent's cursor
+	opcursor = 3
 	# color value of whose turn it is (1=green, 2=red)
 	turn = 1
 	# keys pressed in the previous game loop iteration (pew.keys() value),
@@ -206,7 +208,17 @@ def main():
 
 		# more MQTT topics
 		mycursortopic = b'fourinarow/game/' + myname + b'/cursor'
+		opcursortopic = b'fourinarow/game/' + joined + b'/cursor'
 
+		# callback for handling incoming MQTT messages while we're in the game
+		def onMessageGame(topic, message):
+			nonlocal opcursor
+			# input validation: check length, otherwise if someone sends us an empty message we crash with an IndexError on the following line 
+			if topic == opcursortopic and len(message) == 1:
+				opcursor = message[0]
+		client.set_callback(onMessageGame)
+		# subscribe to the opponent's cursor
+		client.subscribe(opcursortopic)
 		# initial update so the opponent knows where my cursor is from the start
 		# convert number to one-element bytes by packing it into an intermediate tuple (needs trailing comma to distinguish from grouping parentheses)
 		client.publish(mycursortopic, bytes((cursor,)), True)
@@ -261,13 +273,17 @@ def main():
 			# save the pressed keys for the next iteration to detect edges
 			prevk = k
 
+			# check for incoming messages
+			client.check_msg()
+
 			# -- drawing ----
 
 			# clear previous cursor and dropping piece
 			screen.box(0, 0, 0, 7, 2)
 			if not won:
-				# draw cursor
-				screen.pixel(cursor, 0, turn)
+				# draw two cursors - if they overlap, in orange, otherwise in their respective color
+				screen.pixel(cursor, 0, mycolor)
+				screen.pixel(opcursor, 0, 3 if cursor == opcursor else 3-mycolor)
 			# draw the board (in unanimated state)
 			screen.blit(board, 0, 2)
 			# poke all active animations to draw one iteration each
