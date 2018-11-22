@@ -106,7 +106,12 @@ def main():
 
 		if not joined:
 			return
-		print('joined', joined, 'as color', mycolor)
+
+		# -- game initialization ----
+
+		mycursortopic = b'fourinarow/game/' + myname + b'/cursor'
+
+		client.publish(mycursortopic, bytes((cursor,)), True)
 
 		# -- game loop ----
 
@@ -119,9 +124,11 @@ def main():
 				if k & pew.K_LEFT:
 					if cursor > 0:
 						cursor -= 1
+						client.publish(mycursortopic, bytes((cursor,)), True)
 				if k & pew.K_RIGHT:
 					if cursor < 6:
 						cursor += 1
+						client.publish(mycursortopic, bytes((cursor,)), True)
 				if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X):
 					y = 0
 					while y < 6 and board.pixel(cursor, y) == 0:

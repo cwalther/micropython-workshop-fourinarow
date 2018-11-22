@@ -201,7 +201,15 @@ def main():
 		if not joined:
 			# (the `finally` block at the end will still be executed because we're jumping out from inside the `try` block)
 			return
-		print('joined', joined, 'as color', mycolor)
+
+		# -- game initialization ----
+
+		# more MQTT topics
+		mycursortopic = b'fourinarow/game/' + myname + b'/cursor'
+
+		# initial update so the opponent knows where my cursor is from the start
+		# convert number to one-element bytes by packing it into an intermediate tuple (needs trailing comma to distinguish from grouping parentheses)
+		client.publish(mycursortopic, bytes((cursor,)), True)
 
 		# -- game loop ----
 
@@ -214,13 +222,15 @@ def main():
 			if not won:
 				# check for bits in k using the bitwise AND operator - the result is zero or nonzero, which count as false or true
 				if k & pew.K_LEFT:
-					# move cursor left if possible
+					# move cursor left if possible and publish the new position
 					if cursor > 0:
 						cursor -= 1
+						client.publish(mycursortopic, bytes((cursor,)), True)
 				if k & pew.K_RIGHT:
-					# move cursor right if possible
+					# move cursor right if possible and publish the new position
 					if cursor < 6:
 						cursor += 1
+						client.publish(mycursortopic, bytes((cursor,)), True)
 				# drop only if the respective key was not pressed in the last iteration, otherwise we would repeatedly drop while the key is held down (edge detection)
 				if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X):
 					# determine the topmost occupied (or beyond-the-bottom) place in the column by iterating from the top
