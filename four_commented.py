@@ -293,12 +293,15 @@ def main():
 
 			# -- drawing ----
 
-			# clear previous cursor and dropping piece
-			screen.box(0, 0, 0, 7, 2)
+			# clear previous cursor, dropping piece, and turn indicator
+			screen.box(0, 0, 0, 8, 2)
 			if not won:
 				# draw two cursors - if they overlap, in orange, otherwise in their respective color
 				screen.pixel(cursor, 0, mycolor)
 				screen.pixel(opcursor, 0, 3 if cursor == opcursor else 3-mycolor)
+				# turn indicator
+				if turn == mycolor:
+					screen.pixel(7, 1, turn)
 			# draw the board (in unanimated state)
 			screen.blit(board, 0, 2)
 			# poke all active animations to draw one iteration each
