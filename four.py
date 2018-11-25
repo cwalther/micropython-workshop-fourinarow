@@ -168,10 +168,12 @@ def main():
 
 			# -- drawing ----
 
-			screen.box(0, 0, 0, 7, 2)
+			screen.box(0, 0, 0, 8, 2)
 			if not won:
 				screen.pixel(cursor, 0, mycolor)
 				screen.pixel(opcursor, 0, 3 if cursor == opcursor else 3-mycolor)
+				if turn == mycolor:
+					screen.pixel(7, 1, turn)
 			screen.blit(board, 0, 2)
 			for i in range(len(animations)-1, -1, -1):
 				try:
