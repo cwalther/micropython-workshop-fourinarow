@@ -114,6 +114,19 @@ def main():
 		mydroptopic = b'fourinarow/game/' + myname + b'/drop'
 		opcursortopic = b'fourinarow/game/' + joined + b'/cursor'
 
+		def move(cursor):
+			nonlocal won, turn
+			y = 0
+			while y < 6 and board.pixel(cursor, y) == 0:
+				y += 1
+			if y != 0:
+				board.pixel(cursor, y-1, turn)
+				animations.append(drop(turn, cursor, y+1))
+				won = check(board)
+				if won:
+					animations.append(blink(won))
+				turn = 3 - turn
+
 		def onMessageGame(topic, message):
 			nonlocal opcursor
 			if topic == opcursortopic and len(message) == 1:
@@ -139,16 +152,7 @@ def main():
 						cursor += 1
 						client.publish(mycursortopic, bytes((cursor,)), True)
 				if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X):
-					y = 0
-					while y < 6 and board.pixel(cursor, y) == 0:
-						y += 1
-					if y != 0:
-						board.pixel(cursor, y-1, turn)
-						animations.append(drop(turn, cursor, y+1))
-						won = check(board)
-						if won:
-							animations.append(blink(won))
-						turn = 3 - turn
+					move(cursor)
 					client.publish(mydroptopic, bytes((cursor,)), False)
 			else:
 				if prevk == 0 and k != 0 and len(animations) == 1:

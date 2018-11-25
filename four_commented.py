@@ -211,6 +211,29 @@ def main():
 		mydroptopic = b'fourinarow/game/' + myname + b'/drop'
 		opcursortopic = b'fourinarow/game/' + joined + b'/cursor'
 
+		# Execute a move by dropping a piece of whose turn it is at the given column.
+		def move(cursor):
+			nonlocal won, turn
+			# determine the topmost occupied (or beyond-the-bottom) place in the column by iterating from the top
+			y = 0
+			while y < 6 and board.pixel(cursor, y) == 0:
+				y += 1
+			# now either y == 6 (all were free) or place y was occupied, in both cases y-1 is the desired free place
+			# unless the whole column was full (y == 0)
+			if y != 0:
+				# place the piece in the final position
+				board.pixel(cursor, y-1, turn)
+				# start the drop animation - doesn't draw anything yet, just sets up the generator that will draw when poked
+				animations.append(drop(turn, cursor, y+1))
+				# check for winning rows
+				won = check(board)
+				# won is either False or a non-empty sequence that counts as true
+				if won:
+					# start the blink animation
+					animations.append(blink(won))
+				# reverse the turn: 1 -> 2, 2 -> 1
+				turn = 3 - turn
+
 		# callback for handling incoming MQTT messages while we're in the game
 		def onMessageGame(topic, message):
 			nonlocal opcursor
@@ -246,25 +269,7 @@ def main():
 						client.publish(mycursortopic, bytes((cursor,)), True)
 				# drop only if the respective key was not pressed in the last iteration, otherwise we would repeatedly drop while the key is held down (edge detection)
 				if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X):
-					# determine the topmost occupied (or beyond-the-bottom) place in the column by iterating from the top
-					y = 0
-					while y < 6 and board.pixel(cursor, y) == 0:
-						y += 1
-					# now either y == 6 (all were free) or place y was occupied, in both cases y-1 is the desired free place
-					# unless the whole column was full (y == 0)
-					if y != 0:
-						# place the piece in the final position
-						board.pixel(cursor, y-1, turn)
-						# start the drop animation - doesn't draw anything yet, just sets up the generator that will draw when poked
-						animations.append(drop(turn, cursor, y+1))
-						# check for winning rows
-						won = check(board)
-						# won is either False or a non-empty sequence that counts as true
-						if won:
-							# start the blink animation
-							animations.append(blink(won))
-						# reverse the turn: 1 -> 2, 2 -> 1
-						turn = 3 - turn
+					move(cursor)
 					client.publish(mydroptopic, bytes((cursor,)), False)
 			else:
 				# when the game is over, exit on a key press - several conditions to check:
