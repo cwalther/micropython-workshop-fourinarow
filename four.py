@@ -111,6 +111,7 @@ def main():
 		# -- game initialization ----
 
 		mycursortopic = b'fourinarow/game/' + myname + b'/cursor'
+		mydroptopic = b'fourinarow/game/' + myname + b'/drop'
 		opcursortopic = b'fourinarow/game/' + joined + b'/cursor'
 
 		def onMessageGame(topic, message):
@@ -148,6 +149,7 @@ def main():
 						if won:
 							animations.append(blink(won))
 						turn = 3 - turn
+					client.publish(mydroptopic, bytes((cursor,)), False)
 			else:
 				if prevk == 0 and k != 0 and len(animations) == 1:
 					return
