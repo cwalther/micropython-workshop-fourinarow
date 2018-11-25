@@ -110,9 +110,12 @@ def main():
 
 		# -- game initialization ----
 
-		mycursortopic = b'fourinarow/game/' + myname + b'/cursor'
-		mydroptopic = b'fourinarow/game/' + myname + b'/drop'
-		opcursortopic = b'fourinarow/game/' + joined + b'/cursor'
+		mygameprefix = b'fourinarow/game/' + myname + b'/'
+		mycursortopic = mygameprefix + b'cursor'
+		mydroptopic = mygameprefix + b'drop'
+		opgameprefix = b'fourinarow/game/' + joined + b'/'
+		opcursortopic = opgameprefix + b'cursor'
+		opdroptopic = opgameprefix + b'drop'
 
 		def move(cursor):
 			nonlocal won, turn
@@ -131,8 +134,10 @@ def main():
 			nonlocal opcursor
 			if topic == opcursortopic and len(message) == 1:
 				opcursor = message[0]
+			elif topic == opdroptopic and len(message) == 1 and turn == 3-mycolor:
+				move(message[0])
 		client.set_callback(onMessageGame)
-		client.subscribe(opcursortopic)
+		client.subscribe(opgameprefix + b'#')
 		client.publish(mycursortopic, bytes((cursor,)), True)
 
 		# -- game loop ----
@@ -151,7 +156,7 @@ def main():
 					if cursor < 6:
 						cursor += 1
 						client.publish(mycursortopic, bytes((cursor,)), True)
-				if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X):
+				if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X) and turn == mycolor:
 					move(cursor)
 					client.publish(mydroptopic, bytes((cursor,)), False)
 			else:

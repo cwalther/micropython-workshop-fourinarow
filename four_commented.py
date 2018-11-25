@@ -207,9 +207,12 @@ def main():
 		# -- game initialization ----
 
 		# more MQTT topics
-		mycursortopic = b'fourinarow/game/' + myname + b'/cursor'
-		mydroptopic = b'fourinarow/game/' + myname + b'/drop'
-		opcursortopic = b'fourinarow/game/' + joined + b'/cursor'
+		mygameprefix = b'fourinarow/game/' + myname + b'/'
+		mycursortopic = mygameprefix + b'cursor'
+		mydroptopic = mygameprefix + b'drop'
+		opgameprefix = b'fourinarow/game/' + joined + b'/'
+		opcursortopic = opgameprefix + b'cursor'
+		opdroptopic = opgameprefix + b'drop'
 
 		# Execute a move by dropping a piece of whose turn it is at the given column.
 		def move(cursor):
@@ -240,9 +243,13 @@ def main():
 			# input validation: check length, otherwise if someone sends us an empty message we crash with an IndexError on the following line 
 			if topic == opcursortopic and len(message) == 1:
 				opcursor = message[0]
+			# input validation: the opponent is only allowed to make a move when it is their turn
+			elif topic == opdroptopic and len(message) == 1 and turn == 3-mycolor:
+				# opponent's move
+				move(message[0])
 		client.set_callback(onMessageGame)
-		# subscribe to the opponent's cursor
-		client.subscribe(opcursortopic)
+		# subscribe to all of the opponent's game topics (cursor and drop)
+		client.subscribe(opgameprefix + b'#')
 		# initial update so the opponent knows where my cursor is from the start
 		# convert number to one-element bytes by packing it into an intermediate tuple (needs trailing comma to distinguish from grouping parentheses)
 		client.publish(mycursortopic, bytes((cursor,)), True)
@@ -268,7 +275,8 @@ def main():
 						cursor += 1
 						client.publish(mycursortopic, bytes((cursor,)), True)
 				# drop only if the respective key was not pressed in the last iteration, otherwise we would repeatedly drop while the key is held down (edge detection)
-				if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X):
+				if k & ~prevk & (pew.K_DOWN | pew.K_O | pew.K_X) and turn == mycolor:
+					# my move
 					move(cursor)
 					client.publish(mydroptopic, bytes((cursor,)), False)
 			else:
@@ -280,7 +288,7 @@ def main():
 			# save the pressed keys for the next iteration to detect edges
 			prevk = k
 
-			# check for incoming messages
+			# check for incoming messages, which may execute an opponent's move via onMessageGame
 			client.check_msg()
 
 			# -- drawing ----
