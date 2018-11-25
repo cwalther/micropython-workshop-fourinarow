@@ -208,6 +208,7 @@ def main():
 
 		# more MQTT topics
 		mycursortopic = b'fourinarow/game/' + myname + b'/cursor'
+		mydroptopic = b'fourinarow/game/' + myname + b'/drop'
 		opcursortopic = b'fourinarow/game/' + joined + b'/cursor'
 
 		# callback for handling incoming MQTT messages while we're in the game
@@ -264,6 +265,7 @@ def main():
 							animations.append(blink(won))
 						# reverse the turn: 1 -> 2, 2 -> 1
 						turn = 3 - turn
+					client.publish(mydroptopic, bytes((cursor,)), False)
 			else:
 				# when the game is over, exit on a key press - several conditions to check:
 				# - the first time we're getting here, the key that dropped the final piece may still be pressed - do nothing until all keys have been up in the previous iteration
